@@ -2,9 +2,9 @@
 name = "clipper"
 version = "4.6.2"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
-build = "src/build.rs"
+# build = "src/build.rs"
 
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.20.0"
+bindgen = { git = "https://github.com/rust-lang-nursery/rust-bindgen" }
