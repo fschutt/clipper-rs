@@ -37,6 +37,10 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
+/// For i128 support on stable rust (may be slow)
+#[cfg(use_int128)]
+pub extern crate extprim;
+
 #[macro_use]
 pub mod macros;
 pub mod consts;
@@ -50,6 +54,7 @@ use std::sync::Arc;
 use point::IntPoint;
 use node::PolyNode;
 use consts::*;
+use edge::Edge;
 
 #[derive(PartialEq, Eq)]
 pub enum Direction {
@@ -192,30 +197,6 @@ pub struct IntRect {
     pub top: isize,
     pub right: isize,
     pub bottom: isize,
-}
-
-pub struct Edge<T: IntPoint> {
-    pub bottom: T,
-    /// current (updated for every new scanbeam)
-    pub current: T,
-    pub top: T,
-    pub dx: f64,
-    pub poly_typ: PolyType,
-    /// side only refers to current side of solution poly
-    pub side: EdgeSide,
-    /// 1 or -1 depending on winding direction
-    pub winding_delta: u8,
-    pub winding_count: isize,
-    //winding count of the opposite polytype
-    pub winding_count_2: isize,
-    pub out_idx: isize,
-    pub next: EdgeIndex,
-    pub prev: EdgeIndex,
-    pub next_in_lml: EdgeIndex,
-    pub next_in_ael: EdgeIndex,
-    pub prev_in_ael: EdgeIndex,
-    pub next_in_sel: EdgeIndex,
-    pub prev_in_sel: EdgeIndex,
 }
 
 pub struct IntersectNode<T: IntPoint> {
