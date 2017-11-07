@@ -34,18 +34,27 @@
 //!
 //! http://www.me.berkeley.edu/~mcmains/pubs/DAC05OffsetPolygon.pdf
 
-use std::sync::{Arc, Weak, RwLock};
+#![allow(dead_code)]
+#![allow(unused_macros)]
+    
+#[macro_use]
+pub mod macros;
+pub mod consts;
+pub mod edge;
+pub mod node;
+pub mod point;
+
 use std::f64::consts::PI;
+use std::marker::PhantomData;
+use point::IntPoint;
 
 #[derive(PartialEq, Eq)]
-#[repr(u8)]
 pub enum Direction {
     RightToLeft,
     LeftToRight,
 }
 
 #[derive(PartialEq, Eq)]
-#[repr(u8)]
 pub enum ClipType {
     Intersection,
     Union,
@@ -54,7 +63,6 @@ pub enum ClipType {
 }
 
 #[derive(PartialEq, Eq)]
-#[repr(u8)]
 pub enum PolyType {
     Subject,
     Clip,
@@ -65,7 +73,6 @@ pub enum PolyType {
 /// Others rules include Positive, Negative and ABS_GTR_EQ_TWO (only in OpenGL)
 /// see http://glprogramming.com/red/chapter11.html
 #[derive(PartialEq, Eq)]
-#[repr(u8)]
 pub enum PolyFillType {
     EvenOdd,
     NonZero,
@@ -73,98 +80,7 @@ pub enum PolyFillType {
     Negative,
 }
 
-pub const LO_RANGE: isize = ::std::isize::MAX;
-pub const HI_RANGE: isize = ::std::isize::MAX;
-
-pub trait IntPoint {
-    #[inline(always)]
-    fn get_x(&self) -> isize;
-    #[inline(always)]
-    fn get_y(&self) -> isize;
-}
-
-#[derive(Clone, PartialEq, Eq)]
-#[repr(packed)]
-struct IntPoint2d {
-  pub x: isize,
-  pub y: isize,
-}
-
-impl IntPoint for IntPoint2d {
-    #[inline(always)]
-    fn get_x(&self) -> isize { self.x }
-    #[inline(always)]
-    fn get_y(&self) -> isize { self.y }
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct IntPoint3d {
-  pub x: isize,
-  pub y: isize,
-  pub z: isize,
-}
-
-impl IntPoint for IntPoint3d {
-    #[inline(always)]
-    fn get_x(&self) -> isize { self.x }
-    #[inline(always)]
-    fn get_y(&self) -> isize { self.y }
-}
-
-pub trait DoublePoint {
-    #[inline(always)]
-    fn get_x(&self) -> f64;
-    #[inline(always)]
-    fn get_y(&self) -> f64;
-}
-
-#[repr(packed)]
-pub struct DoublePoint2d {
-  pub x: f64,
-  pub y: f64,
-}
-
-impl From<IntPoint2d> for DoublePoint2d {
-    fn from(p: IntPoint2d) -> Self {
-        DoublePoint2d {
-            x: p.x as f64,
-            y: p.y as f64,
-        }
-    }
-}
-
-impl DoublePoint for DoublePoint2d {
-    #[inline(always)]
-    fn get_x(&self) -> f64 { self.x }
-    #[inline(always)]
-    fn get_y(&self) -> f64 { self.y }
-}
-
-pub struct DoublePoint3d {
-  pub x: f64,
-  pub y: f64,
-  pub z: f64,
-}
-
-impl From<IntPoint3d> for DoublePoint3d {
-    fn from(p: IntPoint3d) -> Self {
-        DoublePoint3d {
-            x: p.x as f64,
-            y: p.y as f64,
-            z: p.z as f64,
-        }
-    }
-}
-
-impl DoublePoint for DoublePoint3d {
-    #[inline(always)]
-    fn get_x(&self) -> f64 { self.x }
-    #[inline(always)]
-    fn get_y(&self) -> f64 { self.y }
-}
-
 #[derive(PartialEq, Eq, Copy, Clone)]
-#[repr(u8)]
 pub enum InitOptions {
     ReverseSolution,
     StrictlySimple,
@@ -172,14 +88,14 @@ pub enum InitOptions {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
-enum JoinType {
+pub enum JoinType {
     Square,
     Round,
     Miter,
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]
-enum EndType {
+pub enum EndType {
     ClosedPolygon,
     ClosedLine,
     OpenButt,
@@ -187,78 +103,115 @@ enum EndType {
     OpenRound
 }
 
-#[repr(u8)]
-enum EdgeSide {
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum EdgeSide {
     Left,
     Right
 }
 
-pub struct PolyNode {
-    //node index in parent.childs
+/// In Rust you can't have pointers like in the C++ version
+/// So we indices instead
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PolyNodeIndex { 
+    pub(crate) node_idx: usize 
+}
+
+/// In Rust you can't have pointers like in the C++ version
+/// So we indices instead
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct EdgeIndex { 
+    pub(crate) edge_idx: usize 
+}
+
+pub struct PolyNode<T: IntPoint> {
+    /// Reference to the tree the node is located in
+    pub tree: ::std::sync::Arc<::std::sync::Mutex<PolyTree<T>>>,
+    /// The index in the global node memory pool
+    pub glob_index: PolyNodeIndex,
+    /// The index in the current child vector
     pub index: usize,
-    pub parent: Weak<RwLock<PolyNode>>,
-    pub childs: Vec<Arc<RwLock<PolyNode>>>,
+    pub contour: Path<T>,
+    pub parent: Option<PolyNodeIndex>,
+    pub childs: Vec<PolyNodeIndex>,
     pub is_open: bool,
     pub join_type: JoinType,
     pub end_type: EndType,
 }
 
-pub trait PolyNodeWrapper {
-    fn get_next(&self) -> Option<Arc<RwLock<PolyNode>>>;
-    fn add_child(&mut self, child: Arc<RwLock<PolyNode>>);
-    fn get_next_sibling_up(&self) -> Option<Arc<RwLock<PolyNode>>>;
-    fn is_hole(&self) -> bool;
-    fn child_count(&self) -> usize;
-}
+impl<T: IntPoint> PolyNode<T> {
 
-impl PolyNodeWrapper for Arc<RwLock<PolyNode>> {
-
-    fn get_next(&self) -> Option<Arc<RwLock<PolyNode>>> {
-        // TODO!
+    pub(crate) fn get_next(&self) -> Option<PolyNodeIndex> {
+        // TODO
         None
     }
 
-    fn add_child(&mut self, child: Arc<RwLock<PolyNode>>) {
-        let cnt = self.read().unwrap().childs.len();
-        child.write().unwrap().parent = Arc::downgrade(&self);
-        child.write().unwrap().index = cnt;
-        self.write().unwrap().childs.push(child);
+    /// Adds a child node by registering on the tree, adding the indices and saving the index of the node
+    /// TODO: This is maybe a bit less efficient than the C++ version ...
+    pub(crate) fn add_child(&mut self, mut child: PolyNode<T>) {
+        let cnt = self.childs.len() - 1;
+        let mut tree_lock = self.tree.lock().unwrap();
+        child.parent = Some(self.glob_index);
+        child.index = cnt;
+        let glob_cnt = tree_lock.all_nodes.len();
+        child.glob_index = PolyNodeIndex { node_idx: glob_cnt };
+        tree_lock.all_nodes.push(child);
     }
 
-    fn get_next_sibling_up(&self) -> Option<Arc<RwLock<PolyNode>>> {
-        use PolyNodeWrapper;
-        if self.read().unwrap().parent.upgrade().is_none() {
-            None
-        } else if self.read().unwrap().index == self.read().unwrap().parent.read().unwrap().childs.size() - 1 {
-            Some(self.read().unwrap().parent.read().unwrap().get_next_sibling_up())
-        } else {
-            Some(self.read().unwrap().parent.read().unwrap().childs(self.index + 1).clone())
+    pub(crate) fn get_next_sibling_up(&self) -> Option<PolyNodeIndex> {
+        match self.parent {
+            None => None,
+            Some(parent) => {
+                let tree_lock = self.tree.lock().unwrap();
+                let parent_node = &tree_lock.all_nodes[parent.node_idx];
+                if self.index == parent_node.childs.len() - 1 {
+                    parent_node.get_next_sibling_up()
+                } else {
+                    Some(parent_node.childs[self.index + 1])
+                }
+            }
         }
     }
 
-    fn is_hole(&self) -> bool {
-        let result = true;
-        let node_ptr = self.read().unwrap().parent;
+    pub(crate) fn is_hole(&self) -> bool {
+        let mut result = true;
+        let mut node_idx = self.parent;
 
-        while let Some(node) = node_ptr.upgrade() {
-            result = !result;
-            node_ptr = node.read().unwrap().parent;
+        loop {
+            match node_idx {
+                Some(idx) => { 
+                    result = !result;
+                    // node_idx MUST always be valid, so this unwrap is safe
+                    node_idx = self.tree.lock().unwrap().all_nodes[idx.node_idx].parent;
+                }, 
+                None => { break; }
+            }
         }
 
         return result;
     }
 
     fn child_count(&self) -> usize {
-        self.read().unwrap().childs.len()
+        self.childs.len()
     }
 }
 
-pub struct PolyTree {
-    pub all_nodes: Vec<PolyNode>,
+pub struct PolyTree<T: IntPoint> {
+    /// Pool of nodes
+    pub all_nodes: Vec<PolyNode<T>>,
+    pub all_edges: Vec<Edge<T>>,
 }
 
-impl PolyTree {
-    pub fn get_first(&self) -> Option<&PolyNode> {
+impl<T: IntPoint> PolyTree<T> {
+
+    /// Creates a new, empty PolyTree
+    pub fn new() -> Self {
+        Self {
+            all_nodes: Vec::new(),
+            all_edges: Vec::new(),
+        }
+    }
+
+    pub fn get_first(&self) -> Option<&PolyNode<T>> {
         self.all_nodes.get(0)
     }
 
@@ -269,7 +222,7 @@ impl PolyTree {
         // if result > 0 && Childs[0] != AllNodes[0] { result -= 1; };
     }
 
-    pub fn clear(&self) {
+    pub fn clear(&mut self) {
         self.all_nodes.clear();
     }
 }
@@ -283,10 +236,11 @@ impl<T: IntPoint> Path<T> {
         self.area() >= 0.0
     }
 
+    // TODO: NOT TESTED IF THIS FUNCTION ACTUALL DOES THE RIGHT THING
     pub fn area(&self) -> f64 {
         if self.poly.len() < 3 { return 0.0; };
 
-        let mut a = 0_f64;
+        let mut a = 0;
         let i = self.poly.iter();
         let j = self.poly.iter().rev();
 
@@ -294,7 +248,7 @@ impl<T: IntPoint> Path<T> {
             a += (p_next.get_x() + p_cur.get_x()) * (p_next.get_y() - p_cur.get_y());
         }
 
-        -a * 0.5
+        -a as f64 * 0.5
     }
 }
 
@@ -304,8 +258,9 @@ pub struct Paths<T: IntPoint> {
 
 pub struct LocalMinimum<T: IntPoint> {
   y: isize,
-  left_bound: Weak<Edge<T>>,
-  right_bound: Weak<Edge<T>>,
+  left_bound: EdgeIndex,
+  right_bound: EdgeIndex,
+  _type: PhantomData<T>,
 }
 
 pub struct IntRect {
@@ -322,7 +277,7 @@ pub struct Edge<T: IntPoint> {
     bottom: T,
     /// current (updated for every new scanbeam)
     current: T,
-    Top: T,
+    top: T,
     dx: f64,
     poly_typ: PolyType,
     /// side only refers to current side of solution poly
@@ -333,26 +288,15 @@ pub struct Edge<T: IntPoint> {
     //winding count of the opposite polytype
     winding_count_2: isize,
     out_idx: isize,
-    next: Weak<Edge<T>>,
-    prev: Weak<Edge<T>>,
-    next_in_lml: Weak<Edge<T>>,
-    next_in_ael: Weak<Edge<T>>,
-    prev_in_ael: Weak<Edge<T>>,
-    next_in_sel: Weak<Edge<T>>,
-    prev_in_sel: Weak<Edge<T>>,
+    next: EdgeIndex,
+    prev: EdgeIndex,
+    next_in_lml: EdgeIndex,
+    next_in_ael: EdgeIndex,
+    prev_in_ael: EdgeIndex,
+    next_in_sel: EdgeIndex,
+    prev_in_sel: EdgeIndex,
 }
 
-/// Edge not currently 'owning' a solution
-pub const UNASSIGNED: i64 = -1;
-/// Edge that would otherwise close a path
-pub const SKIP: i64 = -2;
-
-pub const HORIZONTAL: f64 = -1.0E+40;
-pub const TOLERANCE: f64 = 1.0e-20;
-
-macro_rules! near_zero {
-    ($val:expr) => ((($val) > -TOLERANCE) && ((val) < TOLERANCE))
-}
 
 
 
