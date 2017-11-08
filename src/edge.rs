@@ -34,8 +34,8 @@ impl<T: IntPoint> Edge<T> {
     #[inline]
     pub fn set_dx(&mut self) {
         let dy  = self.top.get_y() - self.bot.get_y();
-        self.dx = if dy == 0 { 
-            ::consts::HORIZONTAL 
+        self.dx = if dy == 0 {
+            ::consts::HORIZONTAL
         } else {
             (self.top.get_x() - self.bot.get_x()) as f64 / dy as f64
         };
@@ -62,7 +62,7 @@ impl<T: IntPoint> Edge<T> {
 
     /// Calculates the intersection point between two edges
     pub fn intersect_point(&mut self, other: &mut Self, ip: &mut Option<T>) {
-        
+
         // warn: matching floating point value
         if self.dx == other.dx {
             let cy = self.cur.get_y();
@@ -72,7 +72,7 @@ impl<T: IntPoint> Edge<T> {
 
         // warn: matching floating point value
         if self.dx == 0.0 {
-            
+
         }
 /*
         if (Edge1.Dx == 0)
@@ -96,7 +96,7 @@ impl<T: IntPoint> Edge<T> {
 
 void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
 {
-#ifdef use_xyz  
+#ifdef use_xyz
   ip.Z = 0;
 #endif
 
@@ -128,8 +128,8 @@ void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
       b1 = Edge1.Bot.Y - (Edge1.Bot.X / Edge1.Dx);
       ip.Y = Round(ip.X / Edge1.Dx + b1);
     }
-  } 
-  else 
+  }
+  else
   {
     b1 = Edge1.Bot.X - Edge1.Bot.Y * Edge1.Dx;
     b2 = Edge2.Bot.X - Edge2.Bot.Y * Edge2.Dx;
@@ -137,11 +137,11 @@ void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
     ip.Y = Round(q);
     if (std::fabs(Edge1.Dx) < std::fabs(Edge2.Dx))
       ip.X = Round(Edge1.Dx * q + b1);
-    else 
+    else
       ip.X = Round(Edge2.Dx * q + b2);
   }
 
-  if (ip.Y < Edge1.Top.Y || ip.Y < Edge2.Top.Y) 
+  if (ip.Y < Edge1.Top.Y || ip.Y < Edge2.Top.Y)
   {
     if (Edge1.Top.Y > Edge2.Top.Y)
       ip.Y = Edge1.Top.Y;
@@ -151,7 +151,7 @@ void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
       ip.X = TopX(Edge1, ip.Y);
     else
       ip.X = TopX(Edge2, ip.Y);
-  } 
+  }
   //finally, don't allow 'ip' to be BELOW curr.Y (ie bottom of scanbeam) ...
   if (ip.Y > Edge1.Curr.Y)
   {
@@ -168,12 +168,15 @@ void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
 #[inline]
 #[cfg(all(use_int32, use_int128))]
 pub fn slopes_equal_edge2<T: IntPoint>(e1: &Edge<T>, e2: &Edge<T>) -> bool {
-    use extprim::i128::i128;
-    let sdy = i128::new(e1.top.get_y() - e1.bot.get_y());
-    let sdx = i128::new(e1.top.get_x() - e1.bot.get_x());
-    let edy = i128::new(e2.top.get_y() - e2.bot.get_y());
-    let edx = i128::new(e2.top.get_x() - e2.bot.get_x());
-    sdy * edx == sdx * edy
+    let sdy = e1.top.get_y() - e1.bot.get_y();
+    let sdx = e1.top.get_x() - e1.bot.get_x();
+    let edy = e2.top.get_y() - e2.bot.get_y();
+    let edx = e2.top.get_x() - e2.bot.get_x();
+
+    let a: (i64, u64) = int128mul!(sdy, edx);
+    let b: (i64, u64) = int128mul!(sdx, edy);
+
+    a.0 == b.0 && a.1 == b.1
 }
 
 #[inline]
@@ -189,12 +192,15 @@ pub fn slopes_equal_edge2<T: IntPoint>(e1: &Edge<T>, e2: &Edge<T>) -> bool {
 #[inline]
 #[cfg(all(use_int32, use_int128))]
 pub fn slopes_equal_point3<T: IntPoint>(p1: &T, p2: &T, p3: &T) -> bool {
-    use extprim::i128::i128;
-    let p12y = i128::new(p1.get_y() - p2.get_y());
-    let p12x = i128::new(p1.get_x() - p2.get_x());
-    let p23y = i128::new(p2.get_y() - p3.get_y());
-    let p23x = i128::new(p2.get_x() - p3.get_x());
-    p12y * p23x == p12x * p23y
+    let p12y = p1.get_y() - p2.get_y();
+    let p12x = p1.get_x() - p2.get_x();
+    let p23y = p2.get_y() - p3.get_y();
+    let p23x = p2.get_x() - p3.get_x();
+
+    let a: (i64, u64) = int128mul!(p12y, p23x);
+    let b: (i64, u64) = int128mul!(p12x, p23y);
+
+    a.0 == b.0 && a.1 == b.1
 }
 
 #[inline]
@@ -210,12 +216,13 @@ pub fn slopes_equal_point3<T: IntPoint>(p1: &T, p2: &T, p3: &T) -> bool {
 #[inline]
 #[cfg(all(use_int32, use_int128))]
 pub fn slopes_equal_point4<T: IntPoint>(p1: &T, p2: &T, p3: &T, p4: &T) -> bool {
-    use extprim::i128::i128;
-    let p12y = i128::new(p1.get_y() - p2.get_y());
-    let p12x = i128::new(p1.get_x() - p2.get_x());
-    let p34y = i128::new(p3.get_y() - p4.get_y());
-    let p34x = i128::new(p3.get_x() - p4.get_x());
-    p12y * p34x == p12x * p34y
+    let p12y = p1.get_y() - p2.get_y();
+    let p12x = p1.get_x() - p2.get_x();
+    let p34y = p3.get_y() - p4.get_y();
+    let p34x = p3.get_x() - p4.get_x();
+    let a: (i64, u64) = int128mul!(p12y, p34x);
+    let b: (i64, u64) = int128mul!(p12x, p34y);
+    a.0 == b.0 && a.1 == b.1
 }
 
 #[inline]

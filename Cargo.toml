@@ -4,8 +4,6 @@ version = "6.4.2"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
 
 [dependencies]
-extprim = "1.3"
-# stdsimd = "0.0.3"
 
 [features]
 use_int32 = []

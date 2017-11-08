@@ -40,10 +40,6 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
-/// For i128 support on stable rust (may be slow)
-#[cfg(use_int128)]
-pub extern crate extprim;
-
 #[macro_use]
 pub mod macros;
 pub mod consts;
@@ -124,13 +120,13 @@ pub enum EdgeSide {
 // So we use indices instead
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct PolyNodeIndex { 
-    pub(crate) node_idx: usize 
+pub struct PolyNodeIndex {
+    pub(crate) node_idx: usize
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct EdgeIndex { 
-    pub(crate) edge_idx: usize 
+pub struct EdgeIndex {
+    pub(crate) edge_idx: usize
 }
 
 pub struct PolyTree<T: IntPoint> {
@@ -182,7 +178,7 @@ impl<T: IntPoint> Path<T> {
         let mut j = size - 1;
 
         for i in 0..size {
-            a += unsafe { (self.poly.get_unchecked(j).get_x() + self.poly.get_unchecked(i).get_x())  
+            a += unsafe { (self.poly.get_unchecked(j).get_x() + self.poly.get_unchecked(i).get_x())
                         * (self.poly.get_unchecked(j).get_y() - self.poly.get_unchecked(i).get_y()) };
             j = i;
         }
@@ -265,11 +261,11 @@ impl<T: IntPoint> OutRec<T> {
 
 impl<T: IntPoint> OutRec<T> {
     #[inline(always)]
-    pub fn is_hole(&self) -> bool { 
+    pub fn is_hole(&self) -> bool {
         self.is_hole_open & IS_HOLE == 0
     }
     #[inline(always)]
-    pub fn is_open(&self) -> bool { 
+    pub fn is_open(&self) -> bool {
         self.is_hole_open & IS_OPEN == 0
     }
 }
@@ -293,7 +289,7 @@ pub fn point_is_vertex<T: IntPoint>(pt: &T, pp: Arc<OutPt<T>>) -> bool {
 /// See http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.5498&rep=rep1&type=pdf
 /// returns 0 if false, +1 if true, -1 if pt ON polygon boundary
 pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
-    
+
     if path.poly.len() < 3 { return 0; }
 
     let mut result: i8 = 0;
@@ -312,7 +308,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
         let np_y = np.get_y();
 
         if np_y == pt_y &&
-           np_x == pt_x || ip_y == np_y && 
+           np_x == pt_x || ip_y == np_y &&
            ((np_x > pt_x) == (ip_x < pt_x)) {
            return -1;
         }
@@ -327,24 +323,47 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
         }
 
         if cond1 || np_x > pt_x {
-            // NOTE: C++ version has unnecessary cast to double?
-            let d = (ip_x - pt_x) * (np_y - pt_y) - (np_x - pt_x) * (ip_y - pt_y);
-            if d != 0 { 
-                return -1; 
-            } else if (d > 0) == (np_y > ip_y) {
-                result = 1 - result;
+
+            let mut vec_a = ip_x - pt_x;
+            let mut vec_b = np_y - pt_y;
+            let mut vec_c = np_x - pt_x;
+            let mut vec_d = ip_y - pt_y;
+
+            let cond2 = np_y > ip_y;
+
+            if (vec_a >> 31) > 0 || (vec_b >> 31) > 0 || (vec_c >> 31) > 0 || (vec_d >> 31) > 0 {
+                // possible overflow
+                let mut a: (i64, u64) = int128mul!(vec_a, vec_b);
+                let mut b: (i64, u64) = int128mul!(vec_c, vec_d);
+
+                a.0 -= b.0;
+                a.1 -= b.1;
+                if a.1 < b.1 { a.0 += 1 };
+                if a.0 != 0 && a.1 != 0 {
+                    return -1;
+                } else if a.0 >= 0 {
+                    result = 1 - result;
+                }
+            } else {
+                // will not overflow
+                let d = vec_a * vec_b - vec_c * vec_d;
+                if d != 0 {
+                    return -1;
+                } else if (d > 0) == cond2 {
+                    result = 1 - result;
+                }
             }
         }
     }
-    
+
     return result;
 }
 
 /// Checks if a point falls in an OutPt
 /// renamed from `int PointInPolygon (const IntPoint &pt, OutPt *op)`
 pub fn is_point_in_out_pt<T: IntPoint>(pt: &T, op: Arc<OutPt<T>>) -> i8 {
-    
-    // This is different from the original algorithm: 
+
+    // This is different from the original algorithm:
     // Instead of following pointers, we collect the OutPt into a path
     // This provides better cache access + lets us reuse the point
     let mut out_path = Vec::<T>::new();
@@ -359,13 +378,13 @@ pub fn is_point_in_out_pt<T: IntPoint>(pt: &T, op: Arc<OutPt<T>>) -> i8 {
     is_point_in_path(pt, &Path { poly: out_path })
 }
 
-/// TODO: this works, but it is worst-case O(n^2) 
+/// TODO: this works, but it is worst-case O(n^2)
 /// as we check every point against every other point
 ///
 /// In theory, this should perform better than the C++ version ("Poly2ContainsPoly1")
 /// due to better cache access.
 pub fn poly2_contains_poly1<T: IntPoint>(pt1: Arc<OutPt<T>>, pt2: Arc<OutPt<T>>) -> bool {
-    
+
     // create path for pt2
     let mut out_path = Vec::<T>::new();
     let origin_op = pt2.clone();

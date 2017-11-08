@@ -23,4 +23,3 @@ const HI_RANGE: isize = 0x7FFF;
 const LO_RANGE: u64 = 0x3FFFFFFF;
 #[cfg(not(use_int32))]
 const HI_RANGE: u64 = 0x3FFFFFFFFFFFFFFF;
-
