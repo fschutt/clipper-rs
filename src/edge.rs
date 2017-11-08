@@ -27,8 +27,8 @@ pub struct Edge<T: IntPoint> {
 
 impl<T: IntPoint> Edge<T> {
     #[inline]
-    pub fn is_horizontal(&self) {
-        self.dx == ::consts::HORIZONTAL;
+    pub fn is_horizontal(&self) -> bool {
+        self.dx == ::consts::HORIZONTAL
     }
 
     #[inline]
@@ -61,109 +61,68 @@ impl<T: IntPoint> Edge<T> {
     }
 
     /// Calculates the intersection point between two edges
-    pub fn intersect_point(&mut self, other: &mut Self, ip: &mut Option<T>) {
+    pub fn intersect_point(&mut self, other: &mut Self) -> T {
+
+        let mut ip: T;
 
         // warn: matching floating point value
         if self.dx == other.dx {
             let cy = self.cur.get_y();
-            *ip = Some(T::new(self.top_x(cy), cy));
-            return;
+            return T::new(self.top_x(cy), cy);
         }
 
         // warn: matching floating point value
-        if self.dx == 0.0 {
+        else if self.dx == 0.0 {
+            let cur_y = if other.is_horizontal() {
+                other.bot.get_y()
+            } else {
+                let b2 = other.bot.get_y() as f64 - (other.bot.get_x() as f64 / other.dx);
+                (self.bot.get_x() as f64 / other.dx + b2).round() as CInt
+            };
 
+            ip = T::new(self.bot.get_x(), cur_y);
         }
-/*
-        if (Edge1.Dx == 0)
-      {
-        ip.X = Edge1.Bot.X;
-        if (IsHorizontal(Edge2))
-          ip.Y = Edge2.Bot.Y;
-        else
-        {
-          b2 = Edge2.Bot.Y - (Edge2.Bot.X / Edge2.Dx);
-          ip.Y = Round(ip.X / Edge2.Dx + b2);
+
+        // warn: matching floating point value
+        // reverse of previous block
+        else if other.dx == 0.0 {
+            let cur_y = if self.is_horizontal() {
+                self.bot.get_y()
+            } else {
+                let b2 = self.bot.get_y() as f64 - (self.bot.get_x() as f64 / self.dx);
+                (other.bot.get_x() as f64 / self.dx + b2).round() as CInt
+            };
+
+            ip = T::new(other.bot.get_x(), cur_y);
         }
-*/
-        if let Some(ref mut p) = *ip {
-            p.set_z(0);
+
+        else {
+            let b1 = (self.bot.get_x() - self.bot.get_y()) as f64 * self.dx;
+            let b2 = (other.bot.get_x() - other.bot.get_y()) as f64 * other.dx;
+            let q = (b2 - b1) as f64 / (self.dx - other.dx);
+            let cur_y = q.round() as CInt;
+            let cur_x = if self.dx.abs() < other.dx.abs() {
+                (self.dx * q + b1).round() as CInt
+            } else {
+                (other.dx * q + b2).round() as CInt
+            };
+
+            ip = T::new(cur_x, cur_y);
         }
+
+        if ip.get_y() > self.cur.get_y() {
+            let prev_y = self.cur.get_y();
+            ip.set_y(prev_y);
+            if self.dx.abs() > other.dx.abs() {
+                ip.set_x(other.top_x(prev_y));
+            } else {
+                ip.set_x(self.top_x(prev_y));
+            }
+        }
+
+        ip
     }
 }
-
-/*
-
-void IntersectPoint(TEdge &Edge1, TEdge &Edge2, IntPoint &ip)
-{
-#ifdef use_xyz
-  ip.Z = 0;
-#endif
-
-  double b1, b2;
-  if (Edge1.Dx == Edge2.Dx)
-  {
-    ip.Y = Edge1.Curr.Y;
-    ip.X = TopX(Edge1, ip.Y);
-    return;
-  }
-  else if (Edge1.Dx == 0)
-  {
-    ip.X = Edge1.Bot.X;
-    if (IsHorizontal(Edge2))
-      ip.Y = Edge2.Bot.Y;
-    else
-    {
-      b2 = Edge2.Bot.Y - (Edge2.Bot.X / Edge2.Dx);
-      ip.Y = Round(ip.X / Edge2.Dx + b2);
-    }
-  }
-  else if (Edge2.Dx == 0)
-  {
-    ip.X = Edge2.Bot.X;
-    if (IsHorizontal(Edge1))
-      ip.Y = Edge1.Bot.Y;
-    else
-    {
-      b1 = Edge1.Bot.Y - (Edge1.Bot.X / Edge1.Dx);
-      ip.Y = Round(ip.X / Edge1.Dx + b1);
-    }
-  }
-  else
-  {
-    b1 = Edge1.Bot.X - Edge1.Bot.Y * Edge1.Dx;
-    b2 = Edge2.Bot.X - Edge2.Bot.Y * Edge2.Dx;
-    double q = (b2-b1) / (Edge1.Dx - Edge2.Dx);
-    ip.Y = Round(q);
-    if (std::fabs(Edge1.Dx) < std::fabs(Edge2.Dx))
-      ip.X = Round(Edge1.Dx * q + b1);
-    else
-      ip.X = Round(Edge2.Dx * q + b2);
-  }
-
-  if (ip.Y < Edge1.Top.Y || ip.Y < Edge2.Top.Y)
-  {
-    if (Edge1.Top.Y > Edge2.Top.Y)
-      ip.Y = Edge1.Top.Y;
-    else
-      ip.Y = Edge2.Top.Y;
-    if (std::fabs(Edge1.Dx) < std::fabs(Edge2.Dx))
-      ip.X = TopX(Edge1, ip.Y);
-    else
-      ip.X = TopX(Edge2, ip.Y);
-  }
-  //finally, don't allow 'ip' to be BELOW curr.Y (ie bottom of scanbeam) ...
-  if (ip.Y > Edge1.Curr.Y)
-  {
-    ip.Y = Edge1.Curr.Y;
-    //use the more vertical edge to derive X ...
-    if (std::fabs(Edge1.Dx) > std::fabs(Edge2.Dx))
-      ip.X = TopX(Edge2, ip.Y); else
-      ip.X = TopX(Edge1, ip.Y);
-  }
-}
-*/
-
 
 #[inline]
 #[cfg(all(use_int32, use_int128))]
