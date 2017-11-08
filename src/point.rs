@@ -1,36 +1,51 @@
+#[cfg(use_int32)]
+pub type CInt = i32;
+#[cfg(not(use_int32))]
+pub type CInt = i64;
+
 pub trait IntPoint: PartialEq + Copy + Clone {
     #[inline(always)]
-    fn get_x(&self) -> isize;
+    fn get_x(&self) -> CInt;
     #[inline(always)]
-    fn get_y(&self) -> isize;
+    fn get_y(&self) -> CInt;
+
+    #[inline]
+    fn get_dx(&self, other: &Self) -> f64 {
+        if self.get_y() == other.get_y() {
+            ::consts::HORIZONTAL
+        } else {
+            (other.get_x() - self.get_x()) as f64 / 
+            (other.get_y() - self.get_y()) as f64
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(packed)]
 struct IntPoint2d {
-  pub x: isize,
-  pub y: isize,
+  pub x: CInt,
+  pub y: CInt,
 }
 
 impl IntPoint for IntPoint2d {
     #[inline(always)]
-    fn get_x(&self) -> isize { self.x }
+    fn get_x(&self) -> CInt { self.x }
     #[inline(always)]
-    fn get_y(&self) -> isize { self.y }
+    fn get_y(&self) -> CInt { self.y }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct IntPoint3d {
-  pub x: isize,
-  pub y: isize,
-  pub z: isize,
+  pub x: CInt,
+  pub y: CInt,
+  pub z: CInt,
 }
 
 impl IntPoint for IntPoint3d {
     #[inline(always)]
-    fn get_x(&self) -> isize { self.x }
+    fn get_x(&self) -> CInt { self.x }
     #[inline(always)]
-    fn get_y(&self) -> isize { self.y }
+    fn get_y(&self) -> CInt { self.y }
 }
 
 pub trait DoublePoint {

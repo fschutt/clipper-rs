@@ -340,6 +340,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
     return result;
 }
 
+/// Checks if a point falls in an OutPt
 /// renamed from `int PointInPolygon (const IntPoint &pt, OutPt *op)`
 pub fn is_point_in_out_pt<T: IntPoint>(pt: &T, op: Arc<OutPt<T>>) -> i8 {
     
@@ -357,3 +358,36 @@ pub fn is_point_in_out_pt<T: IntPoint>(pt: &T, op: Arc<OutPt<T>>) -> i8 {
 
     is_point_in_path(pt, &Path { poly: out_path })
 }
+
+/// TODO: this works, but it is worst-case O(n^2) 
+/// as we check every point against every other point
+///
+/// In theory, this should perform better than the C++ version ("Poly2ContainsPoly1")
+/// due to better cache access.
+pub fn poly2_contains_poly1<T: IntPoint>(pt1: Arc<OutPt<T>>, pt2: Arc<OutPt<T>>) -> bool {
+    
+    // create path for pt2
+    let mut out_path = Vec::<T>::new();
+    let origin_op = pt2.clone();
+    let mut cur_op = pt2.clone();
+
+    while cur_op != origin_op {
+        out_path.push(cur_op.pt);
+        cur_op = cur_op.next.clone();
+    }
+
+    let pt2_path = Path { poly: out_path };
+
+    let origin_op = pt1.clone();
+    let mut cur_op = pt1.clone();
+
+    while cur_op != origin_op {
+        let res = is_point_in_path(&cur_op.pt, &pt2_path);
+        if res >= 0 { return res > 0 }
+        cur_op = cur_op.next.clone();
+    }
+
+    true
+}
+
+

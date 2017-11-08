@@ -1,4 +1,4 @@
-use point::IntPoint;
+use point::{CInt, IntPoint};
 use {EdgeSide, PolyType, EdgeIndex};
 
 pub struct Edge<T: IntPoint> {
@@ -23,6 +23,42 @@ pub struct Edge<T: IntPoint> {
     pub prev_in_ael: EdgeIndex,
     pub next_in_sel: EdgeIndex,
     pub prev_in_sel: EdgeIndex,
+}
+
+impl<T: IntPoint> Edge<T> {
+    #[inline]
+    pub fn is_horizontal(&self) {
+        self.dx == ::consts::HORIZONTAL;
+    }
+
+    #[inline]
+    pub fn set_dx(&mut self) {
+        let dy  = self.top.get_y() - self.bot.get_y();
+        self.dx = if dy == 0 { 
+            ::consts::HORIZONTAL 
+        } else {
+            (self.top.get_x() - self.bot.get_x()) as f64 / dy as f64
+        };
+    }
+
+    #[inline]
+    pub fn swap_sides(&mut self, other: &mut Self) {
+        ::std::mem::swap(&mut self.side, &mut other.side);
+    }
+
+    #[inline]
+    pub fn swap_poly_indices(&mut self, other: &mut Self) {
+        ::std::mem::swap(&mut self.out_idx, &mut other.out_idx);
+    }
+
+    #[inline]
+    pub fn top_x(&self, current_y: CInt) -> CInt {
+        if current_y == self.top.get_y() {
+            self.top.get_x()
+        } else {
+            self.dx.round() as CInt * (current_y - self.bot.get_y())
+        }
+    }
 }
 
 #[inline]

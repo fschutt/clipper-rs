@@ -1,6 +1,6 @@
 [package]
 name = "clipper"
-version = "4.6.2"
+version = "6.4.2"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
 
 [dependencies]
