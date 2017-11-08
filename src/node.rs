@@ -1,6 +1,9 @@
 use point::IntPoint;
 use {PolyTree, Path, PolyNodeIndex, JoinType, EndType};
 
+// TODO: This system should not rely on IDs, rather on Arc<> references
+// Clean up!!
+
 pub struct PolyNode<T: IntPoint> {
     /// Reference to the tree the node is located in
     pub tree: ::std::sync::Arc<::std::sync::Mutex<PolyTree<T>>>,
