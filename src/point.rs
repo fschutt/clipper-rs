@@ -1,4 +1,4 @@
-pub trait IntPoint {
+pub trait IntPoint: PartialEq {
     #[inline(always)]
     fn get_x(&self) -> isize;
     #[inline(always)]

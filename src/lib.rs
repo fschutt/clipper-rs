@@ -34,6 +34,9 @@
 //!
 //! http://www.me.berkeley.edu/~mcmains/pubs/DAC05OffsetPolygon.pdf
 
+// stdsimd needs this for detecting CPU features at runtime
+#![feature(cfg_target_feature)]
+
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
@@ -215,7 +218,7 @@ pub struct LocalMinimum<T: IntPoint> {
     _type: PhantomData<T>,
 }
 
-
+#[derive(PartialEq)]
 pub struct OutPt<T: IntPoint> {
     pub idx: usize,
     pub pt: T,
@@ -276,3 +279,108 @@ pub struct Join<T: IntPoint> {
     pub out_pt2: Arc<OutPt<T>>,
     pub off_pt: T,
 }
+
+pub fn point_is_vertex<T: IntPoint>(pt: &T, pp: Arc<OutPt<T>>) -> bool {
+    let mut pp2 = pp.clone();
+    loop {
+        if pp2.pt == *pt { return true; }
+        pp2 = pp2.next.clone();
+        if *pp2 != *pp { break; }
+    }
+    false
+}
+
+/// See http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.5498&rep=rep1&type=pdf
+/// returns 0 if false, +1 if true, -1 if pt ON polygon boundary
+pub fn is_point_in_polygon<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
+    if path.poly.len() < 3 { return -1; }
+
+    let mut result: i8 = 0;
+    let ip_iter = path.poly.iter();
+    let mut np_iter = path.poly.iter().cycle();
+    np_iter.next();
+
+    let pt_y = pt.get_y();
+    let pt_x = pt.get_x();
+
+    for (ip, np) in ip_iter.zip(np_iter) {
+
+        let ip_x = ip.get_x();
+        let ip_y = ip.get_y();
+        let np_x = np.get_x();
+        let np_y = np.get_y();
+
+        if np_y == pt_y &&
+           np_x == pt_x || ip_y == np_y && 
+           ((np_x > pt_x) == (ip_x < pt_x)) {
+           return -1;
+        }
+
+        if (ip_y < pt_y) != (np_y < pt_y) { continue; }
+
+        let cond1 = ip_x >= pt_x;
+
+        if cond1 && np_x > pt_x {
+            result = 1 - result;
+            continue;
+        }
+
+        if cond1 || np_x > pt_x {
+            // NOTE: C++ version has unnecessary cast to double?
+            let d = (ip_x - pt_x) * (np_y - pt_y) - (np_x - pt_x) * (ip_y - pt_y);
+            if d != 0 { 
+                return -1; 
+            } else if (d > 0) == (np_y > ip_y) {
+                result = 1 - result;
+            }
+        }
+    }
+    
+    return result;
+}
+
+/*
+
+int PointInPolygon(const IntPoint &pt, const Path &path)
+{
+  //returns 0 if false, +1 if true, -1 if pt ON polygon boundary
+  int result = 0;
+  size_t cnt = path.size();
+  if (cnt < 3) return 0;
+  IntPoint ip = path[0];
+  for(size_t i = 1; i <= cnt; ++i)
+  {
+    IntPoint ipNext = (i == cnt ? path[0] : path[i]);
+    if (ipNext.Y == pt.Y)
+    {
+        if ((ipNext.X == pt.X) || (ip.Y == pt.Y && 
+          ((ipNext.X > pt.X) == (ip.X < pt.X)))) return -1;
+    }
+    if ((ip.Y < pt.Y) != (ipNext.Y < pt.Y))
+    {
+      if (ip.X >= pt.X)
+      {
+        if (ipNext.X > pt.X) result = 1 - result;
+        else
+        {
+          double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) - 
+            (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
+          if (!d) return -1;
+          if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
+        }
+      } else
+      {
+        if (ipNext.X > pt.X)
+        {
+          double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) - 
+            (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
+          if (!d) return -1;
+          if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
+        }
+      }
+    }
+    ip = ipNext;
+  } 
+  return result;
+}
+*/
