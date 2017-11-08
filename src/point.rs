@@ -1,11 +1,11 @@
-pub trait IntPoint: PartialEq {
+pub trait IntPoint: PartialEq + Copy + Clone {
     #[inline(always)]
     fn get_x(&self) -> isize;
     #[inline(always)]
     fn get_y(&self) -> isize;
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(packed)]
 struct IntPoint2d {
   pub x: isize,
@@ -19,7 +19,7 @@ impl IntPoint for IntPoint2d {
     fn get_y(&self) -> isize { self.y }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct IntPoint3d {
   pub x: isize,
   pub y: isize,

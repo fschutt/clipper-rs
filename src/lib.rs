@@ -292,8 +292,9 @@ pub fn point_is_vertex<T: IntPoint>(pt: &T, pp: Arc<OutPt<T>>) -> bool {
 
 /// See http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.5498&rep=rep1&type=pdf
 /// returns 0 if false, +1 if true, -1 if pt ON polygon boundary
-pub fn is_point_in_polygon<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
-    if path.poly.len() < 3 { return -1; }
+pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
+    
+    if path.poly.len() < 3 { return 0; }
 
     let mut result: i8 = 0;
     let ip_iter = path.poly.iter();
@@ -339,48 +340,20 @@ pub fn is_point_in_polygon<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
     return result;
 }
 
-/*
+/// renamed from `int PointInPolygon (const IntPoint &pt, OutPt *op)`
+pub fn is_point_in_out_pt<T: IntPoint>(pt: &T, op: Arc<OutPt<T>>) -> i8 {
+    
+    // This is different from the original algorithm: 
+    // Instead of following pointers, we collect the OutPt into a path
+    // This provides better cache access + lets us reuse the point
+    let mut out_path = Vec::<T>::new();
+    let origin_op = op.clone();
+    let mut cur_op = op.clone();
 
-int PointInPolygon(const IntPoint &pt, const Path &path)
-{
-  //returns 0 if false, +1 if true, -1 if pt ON polygon boundary
-  int result = 0;
-  size_t cnt = path.size();
-  if (cnt < 3) return 0;
-  IntPoint ip = path[0];
-  for(size_t i = 1; i <= cnt; ++i)
-  {
-    IntPoint ipNext = (i == cnt ? path[0] : path[i]);
-    if (ipNext.Y == pt.Y)
-    {
-        if ((ipNext.X == pt.X) || (ip.Y == pt.Y && 
-          ((ipNext.X > pt.X) == (ip.X < pt.X)))) return -1;
+    while cur_op != origin_op {
+        out_path.push(cur_op.pt);
+        cur_op = cur_op.next.clone();
     }
-    if ((ip.Y < pt.Y) != (ipNext.Y < pt.Y))
-    {
-      if (ip.X >= pt.X)
-      {
-        if (ipNext.X > pt.X) result = 1 - result;
-        else
-        {
-          double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) - 
-            (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
-          if (!d) return -1;
-          if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
-        }
-      } else
-      {
-        if (ipNext.X > pt.X)
-        {
-          double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) - 
-            (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
-          if (!d) return -1;
-          if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
-        }
-      }
-    }
-    ip = ipNext;
-  } 
-  return result;
+
+    is_point_in_path(pt, &Path { poly: out_path })
 }
-*/
