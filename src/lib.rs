@@ -225,20 +225,43 @@ pub struct OutPt<T: IntPoint> {
 impl<T: IntPoint> OutPt<T> {
     // TODO!!
     pub fn area(&self) -> f64 {
-        /*
-            double Area(const OutPt *op)
-            {
-              const OutPt *startOp = op;
-              if (!op) return 0;
-              double a = 0;
-              do {
-                a +=  (double)(op->Prev->Pt.X + op->Pt.X) * (double)(op->Prev->Pt.Y - op->Pt.Y);
-                op = op->Next;
-              } while (op != startOp);
-              return a * 0.5;
-            }
-        */
-        0.0
+        let start = self.next.clone();
+        let mut area = 0.0;
+        let mut op = start.clone();
+        loop {
+            area += ((op.prev.pt.get_x() + op.pt.get_x()) *
+                     (op.prev.pt.get_y() - op.pt.get_y())) as f64;
+            op = op.next.clone();
+            if *op == *start { break; }
+        }
+
+        area * 0.5
+    }
+
+    pub fn reverse_poly_pt_list(&mut self) {
+/*
+
+        // not possible in the rust model, also very bad for cache
+        let start = self.next.clone();
+        let mut op = start.clone();
+        loop {
+            let pp2 = op.next.clone();
+            op.next = op.prev.clone();
+            op.prev = pp2.clone();
+            op = pp2;
+            if *op == *start { break; }
+        }
+
+            if (!pp) return;
+            OutPt *pp1, *pp2;
+            pp1 = pp;
+            do {
+            pp2 = pp1->Next;
+            pp1->Next = pp1->Prev;
+            pp1->Prev = pp2;
+            pp1 = pp2;
+            } while( pp1 != pp );
+*/
     }
 }
 
@@ -281,7 +304,7 @@ pub fn point_is_vertex<T: IntPoint>(pt: &T, pp: Arc<OutPt<T>>) -> bool {
     loop {
         if pp2.pt == *pt { return true; }
         pp2 = pp2.next.clone();
-        if *pp2 != *pp { break; }
+        if *pp2 == *pp { break; }
     }
     false
 }
