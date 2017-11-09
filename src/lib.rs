@@ -357,7 +357,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
             if (vec_a >> 31) > 0 || (vec_b >> 31) > 0 || (vec_c >> 31) > 0 || (vec_d >> 31) > 0 {
                 // possible overflow
                 let mut a: (i64, u64) = int128mul!(vec_a, vec_b);
-                let mut b: (i64, u64) = int128mul!(vec_c, vec_d);
+                let b: (i64, u64) = int128mul!(vec_c, vec_d);
 
                 a.0 -= b.0;
                 a.1 -= b.1;
