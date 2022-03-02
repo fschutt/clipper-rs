@@ -35,7 +35,7 @@
 //! http://www.me.berkeley.edu/~mcmains/pubs/DAC05OffsetPolygon.pdf
 
 // stdsimd needs this for detecting CPU features at runtime
-#![feature(cfg_target_feature)]
+//#![feature(cfg_target_feature)]
 
 #![allow(dead_code)]
 #![allow(unused_macros)]
