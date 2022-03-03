@@ -336,7 +336,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
            return -1;
         }
 
-        if (ip_y < pt_y) != (np_y < pt_y) { continue; }
+        if (ip_y < pt_y) == (np_y < pt_y) { continue; }
 
         let cond1 = ip_x >= pt_x;
 
