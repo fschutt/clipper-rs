@@ -25,7 +25,7 @@ pub trait IntPoint: PartialEq + Copy + Clone {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(packed)]
-struct IntPoint2d {
+pub struct IntPoint2d {
   pub x: CInt,
   pub y: CInt,
 }
