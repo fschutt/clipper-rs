@@ -362,7 +362,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
                 a.0 -= b.0;
                 a.1 -= b.1;
                 if a.1 < b.1 { a.0 += 1 };
-                if a.0 != 0 && a.1 != 0 {
+                if a.0 == 0 && a.1 == 0 {
                     return -1;
                 } else if a.0 >= 0 {
                     result = 1 - result;
@@ -370,7 +370,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
             } else {
                 // will not overflow
                 let d = vec_a * vec_b - vec_c * vec_d;
-                if d != 0 {
+                if d == 0 {
                     return -1;
                 } else if (d > 0) == cond2 {
                     result = 1 - result;
