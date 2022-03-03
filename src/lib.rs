@@ -331,8 +331,8 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
         let np_y = np.get_y();
 
         if np_y == pt_y &&
-           np_x == pt_x || ip_y == np_y &&
-           ((np_x > pt_x) == (ip_x < pt_x)) {
+           (np_x == pt_x || ip_y == np_y &&
+           ((np_x > pt_x) == (ip_x < pt_x))) {
            return -1;
         }
 
@@ -340,12 +340,12 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
 
         let cond1 = ip_x >= pt_x;
 
-        if cond1 && np_x > pt_x {
+        if cond1 && (np_x > pt_x) {
             result = 1 - result;
             continue;
         }
 
-        if cond1 || np_x > pt_x {
+        if cond1 || (np_x > pt_x) {
 
             let mut vec_a = ip_x - pt_x;
             let mut vec_b = np_y - pt_y;
