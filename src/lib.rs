@@ -35,7 +35,7 @@
 //! http://www.me.berkeley.edu/~mcmains/pubs/DAC05OffsetPolygon.pdf
 
 // stdsimd needs this for detecting CPU features at runtime
-#![feature(cfg_target_feature)]
+//#![feature(cfg_target_feature)]
 
 #![allow(dead_code)]
 #![allow(unused_macros)]
@@ -331,21 +331,21 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
         let np_y = np.get_y();
 
         if np_y == pt_y &&
-           np_x == pt_x || ip_y == np_y &&
-           ((np_x > pt_x) == (ip_x < pt_x)) {
+           (np_x == pt_x || ip_y == np_y &&
+           ((np_x > pt_x) == (ip_x < pt_x))) {
            return -1;
         }
 
-        if (ip_y < pt_y) != (np_y < pt_y) { continue; }
+        if (ip_y < pt_y) == (np_y < pt_y) { continue; }
 
         let cond1 = ip_x >= pt_x;
 
-        if cond1 && np_x > pt_x {
+        if cond1 && (np_x > pt_x) {
             result = 1 - result;
             continue;
         }
 
-        if cond1 || np_x > pt_x {
+        if cond1 || (np_x > pt_x) {
 
             let mut vec_a = ip_x - pt_x;
             let mut vec_b = np_y - pt_y;
@@ -362,7 +362,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
                 a.0 -= b.0;
                 a.1 -= b.1;
                 if a.1 < b.1 { a.0 += 1 };
-                if a.0 != 0 && a.1 != 0 {
+                if a.0 == 0 && a.1 == 0 {
                     return -1;
                 } else if a.0 >= 0 {
                     result = 1 - result;
@@ -370,7 +370,7 @@ pub fn is_point_in_path<T: IntPoint>(pt: &T, path: &Path<T>) -> i8 {
             } else {
                 // will not overflow
                 let d = vec_a * vec_b - vec_c * vec_d;
-                if d != 0 {
+                if d == 0 {
                     return -1;
                 } else if (d > 0) == cond2 {
                     result = 1 - result;
